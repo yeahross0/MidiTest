@@ -1,0 +1,83 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <meta charset='utf-8' />
+    <title>Mio Micro</title>
+	<script src="timidity/timidity.js"></script>
+	<script src="bundle.js"></script>
+    <style>
+    	* { padding: 0; margin: 0; }
+    	canvas { background: #fff; display: block; margin: 0 auto; }
+    </style>
+	<canvas id='canvas' width='192' height='128' ondrop='drop_handler(event);' ondragover='drag_over_handler(event);'></canvas>
+
+</head>
+
+<script>
+// REMEMBER TO RUN `serve`
+console.debug(window.timidity);
+
+function slice_from(data, offset, length) {
+	return data.slice(offset, offset + length);
+}
+
+let canvas = document.getElementById('canvas');
+let context = canvas.getContext('2d');
+
+let intro = new Image();
+intro.src = 'images/intro.png';
+
+intro.onload = () => {
+    context.drawImage(intro, 0, 0);   
+}
+
+let mioData = null;
+
+async function drop_handler(event) {
+	console.log('File(s) dropped');
+
+	event.preventDefault();
+
+	if (event.dataTransfer.items) {
+		for (let item = 0; item < event.dataTransfer.items.length; item++) {
+			if (event.dataTransfer.items[item].kind === 'file') {
+				const file = event.dataTransfer.items[item].getAsFile();
+				console.log('file: ', file.name);
+				let buffer = await bufferFromFile(file);
+				mioData = new Uint8Array(buffer);
+				
+				let midiData = window.buildMidiFile(mioData);
+				
+				let player = window.timidity('timidity'); 
+
+				player.load(midiData);
+
+				player.play()
+			}
+			
+		}
+	} else {
+		for (let i = 0; i < event.dataTransfer.files.length; i++) {
+			console.warn('Not Implemented');
+		}
+	}
+}
+
+function drag_over_handler(event) {
+	console.log('Drag');
+	event.preventDefault();
+}
+const bufferFromFile = (file) => {
+	return new Promise((resolve, reject) => {
+		let fileReader = new FileReader();
+		
+		fileReader.onload = () => {
+			resolve(fileReader.result);
+		};
+		
+		fileReader.onerror = reject;
+
+		fileReader.readAsArrayBuffer(file);
+	})
+};
+</script>
